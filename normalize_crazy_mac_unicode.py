@@ -7,14 +7,17 @@
 
 import os
 import unicodedata
+import argparse
 
 
-def normalize(path):
+def normalize(path, strip_accents=False):
     # Rinomina ricorsivamente file e directory in NFD
     for root, dirs, files in os.walk(path, topdown=False):
         for name in files + dirs:
             old_path = os.path.join(root, name)
             new_name = unicodedata.normalize("NFD", name)
+            if strip_accents:
+                new_name = remove_accents(new_name)
             new_path = os.path.join(root, new_name)
 
             if new_path != old_path:
@@ -25,11 +28,22 @@ def normalize(path):
                     print(f"⚠️  Errore su {old_path}: {e}")
 
 
+def remove_accents(text: str) -> str:
+    normalized = unicodedata.normalize("NFD", text)
+    return "".join(c for c in normalized if not unicodedata.combining(c))
+
+
 if __name__ == "__main__":
-    import sys
+    parser = argparse.ArgumentParser(
+        description="Normalize file and directory names to NFD (macOS-friendly)."
+    )
+    parser.add_argument("path", help="Path to target directory")
+    parser.add_argument(
+        "--no-accents",
+        action="store_true",
+        help="Remove accents entirely after normalization",
+    )
 
-    if len(sys.argv) < 2:  # Ci serve almeno un argomento
-        print("Usage: python3 normalize_unicode_mac.py <path>")
-        sys.exit(1)
+    args = parser.parse_args()
 
-    normalize(sys.argv[1])
+    normalize(args.path, strip_accents=args.no_accents)
